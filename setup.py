@@ -14,9 +14,11 @@ setup(
     ],
     install_requires=[
         'migen',
+        'nmigen',
     ],
     dependency_links=[
         "git+https://github.com/m-labs/migen.git#egg=migen",
+        "git+https://github.com/m-labs/nmigen.git#egg=nmigen",
     ],
     entry_points={
         "console_scripts": [
