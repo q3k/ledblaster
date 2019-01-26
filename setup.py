@@ -20,7 +20,8 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "lbgw = gateware.cli:main"
+            "ledblaster = ledblaster.cli:main"
        ],
     },
+    packages=['ledblaster'],
 )
