@@ -14,11 +14,13 @@ setup(
     ],
     install_requires=[
         'migen',
-        'nmigen',
+        'litex',
+        'litedram',
     ],
     dependency_links=[
         "git+https://github.com/m-labs/migen.git#egg=migen",
-        "git+https://github.com/m-labs/nmigen.git#egg=nmigen",
+        "git+https://github.com/enjoy-digital/litex#egg=litex",
+        "git+https://github.com/enjoy-digital/litedram#egg=litedram",
     ],
     entry_points={
         "console_scripts": [
