@@ -1,4 +1,6 @@
 from fractions import Fraction
+import logging
+import math
 
 from migen import *
 from migen.genlib.resetsync import AsyncResetSynchronizer
@@ -7,6 +9,9 @@ from litedram.modules import _TechnologyTimings
 from litedram.modules import _SpeedgradeTimings
 
 from ledblaster.gateware.heartbeat import Heartbeat
+from ledblaster.gateware import led
+
+logger = logging.getLogger(__name__)
 
 class _CRG(Module):
     def __init__(self, platform, sys_clk_freq):
@@ -77,78 +82,6 @@ class M12L64322A(SDRAMModule):
     speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=55, tFAW=None, tRAS=40)}
 
 
-class BankMachine(Module):
-    def __init__(self, r, g, b, x, y, plane):
-        self.r = r
-        self.g = g
-        self.b = b
-        self.x = x
-        self.y = y
-        self.plane = plane
-
-         color_r = Signal(10)
-         color_g = Signal(10)
-         color_b = Signal(10)
-
-
-class Blinker(Module):
-    def __init__(self, platform, chain_length=64):
-        ctrl = platform.request('hub75_control')
-        j1 = platform.request('hub75_chain')
-
-        nbanks = int(2 ** ctrl.bank.nbits)
-        print('Banks:', nbanks)
-
-        pixel_counter = Signal(max=chain_length)
-
-        self.submodules.fsm = FSM(reset_state='IDLE')
-        self.fsm.act('IDLE',
-            NextValue(pixel_counter, 0),
-            NextState('DATA'),
-        )
-
-        self.fsm.act('DATA',
-            If(pixel_counter == chain_length - 1,
-                NextValue(pixel_counter, 0),
-                NextState('LATCH'),
-            ).Else(
-                NextValue(pixel_counter, pixel_counter + 1),
-            )
-        )
-
-        wait = 100000
-        wait_counter = Signal(max=wait)
-        self.fsm.act('LATCH',
-            NextState('WAIT'),
-            NextValue(ctrl.clk, 0),
-            NextValue(wait_counter, wait-1)
-        )
-
-        self.fsm.act('WAIT',
-            If(wait_counter == 0,
-                NextState('IDLE'),
-                NextValue(ctrl.clk, ~ctrl.clk),
-                NextValue(ctrl.bank, ctrl.bank + 1)
-            ).Else(
-                NextValue(wait_counter, wait_counter - 1),
-            )
-        )
-
-        self.comb += [
-            # OE active low
-            ctrl.oe.eq(~self.fsm.ongoing('WAIT')),
-            ctrl.stb.eq(self.fsm.ongoing('LATCH')),
-
-            j1.r.eq(0b11),
-            j1.g.eq(0b11),
-            j1.b.eq(0b11),
-        ]
-
-        plane = Signal(10)
-
-        self.submodules.ba = BankMachine(r=j1.r[0], g=j1.g[0], b=j1.b[0],
-                x=pixel_counter, y=ctrl.bank&(2**nbanks-1), plane=plane)
-
 
 class Target(Module):
     def __init__(self, platform):
@@ -159,4 +92,4 @@ class Target(Module):
         self.submodules.heartbeat = Heartbeat(sys_clk_freq)
         self.comb += platform.request('user_led').eq(~self.heartbeat.out)
 
-        self.submodules.blinker = Blinker(platform)
+        self.submodules.blinker = led.Controller(platform)
